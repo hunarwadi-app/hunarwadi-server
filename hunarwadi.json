@@ -1,0 +1,94 @@
+{
+  "users": [
+    {
+      "id": "tm8re--Xrhja280SN2DOH",
+      "email": "bsdhvcdgvascy@gmail.com",
+      "name": "vishnu thakur",
+      "city": "chandosi",
+      "latitude": 28.443333267532463,
+      "longitude": 78.79178467574322,
+      "role": "both",
+      "is_verified": 1,
+      "profile_photo": null,
+      "created_at": "2026-08-13T14:36:00.813Z"
+    },
+    {
+      "id": "as05eir8Tkzp8uUoIMqdd",
+      "email": "rohan@gmail.com",
+      "name": "rohan",
+      "city": "hanuman gadi",
+      "latitude": 28.443704,
+      "longitude": 78.790261,
+      "role": "both",
+      "is_verified": 1,
+      "profile_photo": null,
+      "created_at": "2026-08-13T14:39:33.818Z"
+    }
+  ],
+  "products": [],
+  "chats": [
+    {
+      "id": "iAVHV5-elkbV8gxZWpdZg",
+      "buyer_id": "as05eir8Tkzp8uUoIMqdd",
+      "seller_id": "tm8re--Xrhja280SN2DOH",
+      "product_id": "MD0z6VYcCeUsPW4ug2v7z",
+      "created_at": "2026-08-13T14:40:11.026Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "yCutvkkU2xpTc2bAYOoYq",
+      "chat_id": "iAVHV5-elkbV8gxZWpdZg",
+      "sender_id": "as05eir8Tkzp8uUoIMqdd",
+      "content": "hi",
+      "message_type": "text",
+      "offer_price": null,
+      "offer_status": null,
+      "sent_at": "2026-08-13T14:40:31.658Z",
+      "read_status": 0
+    },
+    {
+      "id": "_7pw0S6sXyUV12eMyecRd",
+      "chat_id": "iAVHV5-elkbV8gxZWpdZg",
+      "sender_id": "as05eir8Tkzp8uUoIMqdd",
+      "content": "Offer: ₹599",
+      "message_type": "offer",
+      "offer_price": 599,
+      "offer_status": "accepted",
+      "sent_at": "2026-08-13T14:41:23.250Z",
+      "read_status": 0
+    }
+  ],
+  "wishlist": [
+    {
+      "id": "jKgiu-kGd1A_kOrx9thJO",
+      "user_id": "as05eir8Tkzp8uUoIMqdd",
+      "product_id": "MD0z6VYcCeUsPW4ug2v7z",
+      "created_at": "2026-08-13T14:40:10.003Z"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "fbVHFpcIjugSPbr8Q9XN7",
+      "product_id": "MD0z6VYcCeUsPW4ug2v7z",
+      "buyer_id": "as05eir8Tkzp8uUoIMqdd",
+      "rating": 5,
+      "comment": "acha he",
+      "created_at": "2026-08-13T14:41:07.928Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "4i3irC4Vj56UVFFODQYP6",
+      "buyer_id": "as05eir8Tkzp8uUoIMqdd",
+      "seller_id": "tm8re--Xrhja280SN2DOH",
+      "product_id": "MD0z6VYcCeUsPW4ug2v7z",
+      "chat_id": "iAVHV5-elkbV8gxZWpdZg",
+      "price": 699,
+      "status": "cancelled",
+      "created_at": "2026-08-13T14:40:15.228Z",
+      "updated_at": "2026-08-13T14:40:18.044Z"
+    }
+  ],
+  "otps": []
+}
