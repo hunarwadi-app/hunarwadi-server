@@ -1,4 +1,4 @@
-const BASE = "http://localhost:4000/api";
+const BASE = "https://hunarwadi-server.onrender.com/api";
 
 async function req(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
