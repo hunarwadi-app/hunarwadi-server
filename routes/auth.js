@@ -1,39 +1,32 @@
 import express from "express";
 import { nanoid } from "nanoid";
+import { Resend } from "resend";
 import db from "../db.js";
 
 const router = express.Router();
 
-// ============================================================
-// AUTH ROUTES — Email + OTP login
-// ============================================================
-// Why email instead of mobile OTP right now:
-// Mobile OTP in India needs TRAI's DLT registration (one-time cost +
-// per-SMS cost) before you can legally send SMS. Email OTP works with a
-// free email-sending service instead, so there's no cost to get started.
-//
-// FUTURE UPGRADE PATH (when the budget allows):
-// Add a sibling route here like POST /send-otp-mobile that uses an SMS
-// provider (e.g. MSG91) once DLT registration is done, and let the
-// Login screen offer "Continue with Mobile" as a second option. The
-// verify-otp logic below can stay almost the same — it just needs to
-// look up a user by "mobile" instead of "email".
-// ============================================================
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Hunarwadi <onboarding@resend.dev>";
+
+const OTP_EXPIRY_MS = 5 * 60 * 1000;
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
 }
 
-// Step 1: person enters their email, we generate and "send" an OTP
+function generateOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
 router.post("/send-otp", async (req, res) => {
-  const { email } = req.body;
+  const email = (req.body.email || "").trim().toLowerCase();
 
   if (!isValidEmail(email)) {
     return res.status(400).json({ error: "Valid email address required" });
   }
 
-  const otp = String(Math.floor(100000 + Math.random() * 900000));
-  const expires_at = Date.now() + 5 * 60 * 1000; // valid for 5 minutes
+  const otp = generateOtp();
+  const expires_at = Date.now() + OTP_EXPIRY_MS;
 
   const existing = db.data.otps.find((o) => o.email === email);
   if (existing) {
@@ -44,32 +37,33 @@ router.post("/send-otp", async (req, res) => {
   }
   await db.write();
 
-  // TODO (before real launch): replace this console.log + dev_otp with an
-  // actual call to an email provider like Resend or Brevo (both have free
-  // tiers). Until then, the OTP is printed here and returned in the
-  // response so the app is fully testable without spending anything.
-  console.log(`[DEV] OTP for ${email}: ${otp}`);
-
-  res.json({ success: true, dev_otp: otp });
-});
-
-// Step 2: person enters the OTP, we verify it and log them in (or sign them up)
-router.post("/verify-otp", async (req, res) => {
-  const { email, otp } = req.body;
-
-  const record = db.data.otps.find((o) => o.email === email);
-  const isExpired = record && Date.now() > record.expires_at;
-
-  if (!record || record.otp !== otp || isExpired) {
-    return res.status(400).json({ error: "Invalid or expired OTP" });
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: "Your HUNARWADI login code",
+      html: `<p>Your HUNARWADI OTP is: <strong>${otp}</strong></p><p>This code expires in 5 minutes.</p>`,
+    });
+  } catch (err) {
+    console.error("Resend email send failed:", err);
+    return res.status(500).json({ error: "Could not send OTP email. Please try again." });
   }
 
-  // OTP used successfully — remove it so it can't be reused
+  res.json({ success: true });
+});
+
+router.post("/verify-otp", async (req, res) => {
+  const email = (req.body.email || "").trim().toLowerCase();
+  const { otp } = req.body;
+
+  const row = db.data.otps.find((o) => o.email === email);
+  if (!row || row.otp !== otp || Date.now() > row.expires_at) {
+    return res.status(400).json({ error: "Invalid or expired OTP" });
+  }
   db.data.otps = db.data.otps.filter((o) => o.email !== email);
 
   let user = db.data.users.find((u) => u.email === email);
   if (!user) {
-    // First time this email has logged in — create a new account
     user = {
       id: nanoid(),
       email,
