@@ -8,6 +8,7 @@ export default function VerifyOtp() {
   const email = state?.email;
   const navigate = useNavigate();
   const { setUser } = useAuth();
+
   const [digits, setDigits] = useState(new Array(6).fill(""));
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,10 +21,14 @@ export default function VerifyOtp() {
 
   const handleChange = (idx, val) => {
     val = val.replace(/\D/g, "").slice(-1);
+
     const next = [...digits];
     next[idx] = val;
     setDigits(next);
-    if (val && idx < 5) inputsRef.current[idx + 1]?.focus();
+
+    if (val && idx < 5) {
+      inputsRef.current[idx + 1]?.focus();
+    }
   };
 
   const handleKeyDown = (idx, e) => {
@@ -34,18 +39,26 @@ export default function VerifyOtp() {
 
   const handleVerify = async () => {
     const otp = digits.join("");
+
     if (otp.length !== 6) {
       setError("Please enter the full 6-digit code.");
       return;
     }
+
     setLoading(true);
     setError("");
+
     try {
       const res = await api.verifyOtp(email, otp);
+
       setUser(res.user);
       setLoading(false);
-      if (!res.user.name) navigate("/location-permission");
-      else navigate("/home");
+
+      if (!res.user.name) {
+        navigate("/location-permission");
+      } else {
+        navigate("/home");
+      }
     } catch (err) {
       setLoading(false);
       setError(err.message);
@@ -53,23 +66,55 @@ export default function VerifyOtp() {
   };
 
   const handleResend = async () => {
-  await api.sendOtp(email);
+    setError("");
+    setLoading(true);
+
+    try {
+      await api.sendOtp(email);
+      setDigits(new Array(6).fill(""));
+      inputsRef.current[0]?.focus();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="screen" style={{ paddingTop: 60 }}>
-      <h1 className="display" style={{ fontSize: 26, marginBottom: 8 }}>Verify your email</h1>
-      <p style={{ color: "var(--ink-soft)", marginBottom: 24 }}>
+      <h1
+        className="display"
+        style={{ fontSize: 26, marginBottom: 8 }}
+      >
+        Verify your email
+      </h1>
+
+      <p
+        style={{
+          color: "var(--ink-soft)",
+          marginBottom: 24,
+        }}
+      >
         Enter the 6-digit code sent to {email}
       </p>
 
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginBottom: 20,
+        }}
+      >
         {digits.map((d, i) => (
           <input
             key={i}
             ref={(el) => (inputsRef.current[i] = el)}
             className="input"
-            style={{ textAlign: "center", padding: "14px 0", borderRadius: 12 }}
+            style={{
+              textAlign: "center",
+              padding: "14px 0",
+              borderRadius: 12,
+            }}
             value={d}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
@@ -79,16 +124,53 @@ export default function VerifyOtp() {
         ))}
       </div>
 
-      {error && <p style={{ color: "var(--clay-dark)", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      {error && (
+        <p
+          style={{
+            color: "var(--clay-dark)",
+            fontSize: 13,
+            marginBottom: 12,
+          }}
+        >
+          {error}
+        </p>
+      )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>Didn't get the code?</span>
-        <span onClick={handleResend} style={{ fontSize: 13, color: "var(--clay)", fontWeight: 600, cursor: "pointer" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 13,
+            color: "var(--ink-soft)",
+          }}
+        >
+          Didn't get the code?
+        </span>
+
+        <span
+          onClick={handleResend}
+          style={{
+            fontSize: 13,
+            color: "var(--clay)",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
           Resend OTP
         </span>
       </div>
 
-      <button className="btn btn-primary" onClick={handleVerify} disabled={loading}>
+      <button
+        className="btn btn-primary"
+        onClick={handleVerify}
+        disabled={loading}
+      >
         {loading ? "Verifying..." : "Verify & Continue"}
       </button>
     </div>
