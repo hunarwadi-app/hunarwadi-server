@@ -6,7 +6,6 @@ import { useAuth } from "../AuthContext";
 export default function VerifyOtp() {
   const { state } = useLocation();
   const email = state?.email;
-  const devOtp = state?.devOtp;
   const navigate = useNavigate();
   const { setUser } = useAuth();
   const [digits, setDigits] = useState(new Array(6).fill(""));
@@ -54,9 +53,7 @@ export default function VerifyOtp() {
   };
 
   const handleResend = async () => {
-    const res = await api.sendOtp(email);
-    navigate("/verify-otp", { state: { email, devOtp: res.dev_otp }, replace: true });
-  };
+  await api.sendOtp(email);
 
   return (
     <div className="screen" style={{ paddingTop: 60 }}>
@@ -65,11 +62,6 @@ export default function VerifyOtp() {
         Enter the 6-digit code sent to {email}
       </p>
 
-      {devOtp && (
-        <div className="dev-note">
-          <strong>Dev mode:</strong> no real email-sending service is connected yet, so here's your OTP for testing: <strong>{devOtp}</strong>
-        </div>
-      )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
         {digits.map((d, i) => (

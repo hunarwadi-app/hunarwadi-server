@@ -19,10 +19,9 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const res = await api.sendOtp(email);
+      await api.sendOtp(email);
       setLoading(false);
-      // dev_otp shown only because no real email-sending service is connected yet
-      navigate("/verify-otp", { state: { email, devOtp: res.dev_otp } });
+      navigate("/verify-otp", { state: { email } });
     } catch (err) {
       setLoading(false);
       setError(err.message);
