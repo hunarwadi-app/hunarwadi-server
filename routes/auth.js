@@ -6,7 +6,7 @@ import db from "../db.js";
 const router = express.Router();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Hunarwadi <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Hunarwadi <noreply@hunarwadi.in>";
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
 
