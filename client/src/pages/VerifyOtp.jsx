@@ -50,8 +50,7 @@ export default function VerifyOtp() {
 
     try {
       const res = await api.verifyOtp(email, otp);
-
-      setUser(res.user);
+      setUser({ ...res.user, token: res.token });
       setLoading(false);
 
       if (!res.user.name) {

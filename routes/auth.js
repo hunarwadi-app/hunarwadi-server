@@ -2,6 +2,7 @@ import express from "express";
 import { nanoid } from "nanoid";
 import { Resend } from "resend";
 import db from "../db.js";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
@@ -80,9 +81,13 @@ router.post("/verify-otp", async (req, res) => {
   } else {
     user.is_verified = 1;
   }
-  await db.write();
+   await db.write();
 
-  res.json({ success: true, user });
+  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+    expiresIn: "30d",
+  });
+
+  res.json({ success: true, user, token });
 });
 
 export default router;

@@ -1,6 +1,7 @@
 import express from "express";
 import { nanoid } from "nanoid";
 import db from "../db.js";
+import { checkToken } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -47,11 +48,12 @@ const NEXT_STATUS = {
 };
 
 // Create a new order (buyer or seller confirms a deal from chat)
-router.post("/orders", async (req, res) => {
-  const { buyer_id, seller_id, product_id, chat_id, price } = req.body;
+router.post("/orders", checkToken, async (req, res) => {
+  const { seller_id, product_id, chat_id, price } = req.body;
+  const buyer_id = req.userId;
 
-  if (!buyer_id || !seller_id || !product_id) {
-    return res.status(400).json({ error: "buyer_id, seller_id and product_id are required" });
+  if (!seller_id || !product_id) {
+    return res.status(400).json({ error: "seller_id and product_id are required" });
   }
   if (buyer_id === seller_id) {
     return res.status(400).json({ error: "Buyer and seller can't be the same person" });
@@ -76,10 +78,9 @@ router.post("/orders", async (req, res) => {
   res.json(order);
 });
 
-// Get all orders for a user — as buyer AND as seller (role tells the frontend which)
-router.get("/orders", (req, res) => {
-  const { user_id } = req.query;
-  if (!user_id) return res.status(400).json({ error: "user_id is required" });
+// Get all orders for the logged-in user — as buyer AND as seller (role tells the frontend which)
+router.get("/orders", checkToken, (req, res) => {
+  const user_id = req.userId;
 
   const rows = db.data.orders
     .filter((o) => o.buyer_id === user_id || o.seller_id === user_id)
@@ -102,24 +103,31 @@ router.get("/orders", (req, res) => {
 });
 
 // Get a single order (used inside the Chat screen to show live status)
-router.get("/orders/:id", (req, res) => {
+router.get("/orders/:id", checkToken, (req, res) => {
   const o = db.data.orders.find((x) => x.id === req.params.id);
   if (!o) return res.status(404).json({ error: "Not found" });
+  if (o.buyer_id !== req.userId && o.seller_id !== req.userId) {
+    return res.status(403).json({ error: "Not your order" });
+  }
   const product = findProduct(o.product_id) || {};
   res.json({ ...o, product_title: product.title, product_photo: product.photo });
 });
 
 // Get the order tied to a specific chat, if one exists (also used by Chat screen)
-router.get("/chats/:chatId/order", (req, res) => {
+router.get("/chats/:chatId/order", checkToken, (req, res) => {
   const o = db.data.orders.find((x) => x.chat_id === req.params.chatId);
   if (!o) return res.json(null);
+  if (o.buyer_id !== req.userId && o.seller_id !== req.userId) {
+    return res.status(403).json({ error: "Not your order" });
+  }
   const product = findProduct(o.product_id) || {};
   res.json({ ...o, product_title: product.title, product_photo: product.photo });
 });
 
 // Move an order forward to its next status, OR cancel it
-router.put("/orders/:id/status", async (req, res) => {
-  const { status, actor_id } = req.body;
+router.put("/orders/:id/status", checkToken, async (req, res) => {
+  const { status } = req.body;
+  const actor_id = req.userId;
   const order = db.data.orders.find((x) => x.id === req.params.id);
   if (!order) return res.status(404).json({ error: "Not found" });
 

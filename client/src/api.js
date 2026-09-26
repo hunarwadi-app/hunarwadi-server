@@ -1,8 +1,14 @@
 const BASE = "https://hunarwadi-server.onrender.com/api";
 
 async function req(path, opts = {}) {
+  const saved = localStorage.getItem("hunarwadi_user");
+  const token = saved ? JSON.parse(saved).token : null;
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...opts,
   });
   const data = await res.json().catch(() => ({}));
