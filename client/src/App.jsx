@@ -26,10 +26,16 @@ function Protected({ children }) {
   return children;
 }
 
+function RootScreen() {
+  const { user } = useAuth();
+  if (user) return <Navigate to="/home" replace />;
+  return <Welcome />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Welcome />} />
+      <Route path="/" element={<RootScreen />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-otp" element={<VerifyOtp />} />
       <Route path="/location-permission" element={<Protected><LocationPermission /></Protected>} />
