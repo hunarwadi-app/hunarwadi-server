@@ -1,7 +1,7 @@
 import express from "express";
 import { nanoid } from "nanoid";
 import db from "../db.js";
-import { checkToken } from "../middleware/auth.js";
+import { checkToken } from "./middleware/auth.js";
 
 const router = express.Router();
 
