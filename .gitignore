@@ -3,3 +3,13 @@ node_modules/
 .env.*
 !.env.example
 client/dist/
+
+.env
+hunarwadi.json
+node_modules
+
+*.keystore
+*.jks
+output.txt
+*.aab
+*.apk
