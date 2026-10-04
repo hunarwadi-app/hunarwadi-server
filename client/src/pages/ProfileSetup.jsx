@@ -7,7 +7,7 @@ export default function ProfileSetup() {
   const { user, setUser } = useAuth();
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
-  const [role, setRole] = useState("buyer");
+  const [role, setRole] = useState("both");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -39,20 +39,6 @@ export default function ProfileSetup() {
         <div className="field">
           <label className="field-label">City</label>
           <input className="input" value={city} onChange={(e) => setCity(e.target.value)} required placeholder="e.g. Chandausi" />
-        </div>
-        <div className="field">
-          <label className="field-label">I am joining as a...</label>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" className={`chip ${role === "buyer" ? "active" : ""}`} style={{ flex: 1, textAlign: "center" }} onClick={() => setRole("buyer")}>
-              Buyer
-            </button>
-            <button type="button" className={`chip ${role === "seller" ? "active" : ""}`} style={{ flex: 1, textAlign: "center" }} onClick={() => setRole("seller")}>
-              Seller / Artist
-            </button>
-            <button type="button" className={`chip ${role === "both" ? "active" : ""}`} style={{ flex: 1, textAlign: "center" }} onClick={() => setRole("both")}>
-              Both
-            </button>
-          </div>
         </div>
 
         <button className="btn btn-primary" disabled={loading} style={{ marginTop: 20 }}>

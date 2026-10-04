@@ -22,7 +22,17 @@ export default function Profile() {
           <p style={{ color: "var(--ink-soft)", fontSize: 13 }}>{user?.email} · {user?.city}</p>
         </div>
 
-        {(user?.role === "seller" || user?.role === "both") && (
+        <div className="card" style={{ padding: 14, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }} onClick={() => navigate("/add-product")}>
+          <span style={{ fontWeight: 600 }}>{"\u2795"} Add Product</span>
+          <span>{"\u2192"}</span>
+        </div>
+
+        <div className="card" style={{ padding: 14, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }} onClick={() => navigate("/my-products")}>
+          <span style={{ fontWeight: 600 }}>{"\uD83D\uDECD\uFE0F"} My Products</span>
+          <span>{"\u2192"}</span>
+        </div>
+
+        {(
           <div className="card" style={{ padding: 14, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }} onClick={() => navigate("/seller-dashboard")}>
             <span style={{ fontWeight: 600 }}>🧵 Seller Dashboard</span>
             <span>→</span>
