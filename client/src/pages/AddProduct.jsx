@@ -57,7 +57,7 @@ export default function AddProduct() {
     } catch (err) {
       busy.current = false;
       setSubmitting(false);
-      alert("Product save nahi hua, dobara try karein");
+      alert("Product save nahi hua: " + (err && err.message ? err.message : String(err)));
     }
   };
 
