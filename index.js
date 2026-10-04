@@ -49,13 +49,14 @@ function productRating(productId) {
 // Mobile + OTP can be added later once SMS/DLT setup is done (see README).
 // (The actual send-otp / verify-otp routes now live in routes/auth.js)
 
-app.get("/api/users/:id", (req, res) => {
+app.get("/api/users/:id", checkToken, (req, res) => {
   const user = findUser(req.params.id);
   if (!user) return res.status(404).json({ error: "Not found" });
-  res.json(user);
+  res.json(req.userId === user.id ? user : { ...user, email: undefined });
 });
 
-app.put("/api/users/:id", async (req, res) => {
+app.put("/api/users/:id", checkToken, async (req, res) => {
+  if (req.params.id !== req.userId) return res.status(403).json({ error: "Not allowed" });
   const user = findUser(req.params.id);
   if (!user) return res.status(404).json({ error: "Not found" });
   const { name, city, latitude, longitude, role, profile_photo } = req.body;
@@ -66,7 +67,7 @@ app.put("/api/users/:id", async (req, res) => {
   if (role !== undefined) user.role = role;
   if (profile_photo !== undefined) user.profile_photo = profile_photo;
   await db.write();
-  res.json(user);
+  res.json(req.userId === user.id ? user : { ...user, email: undefined });
 });
 
 app.get("/api/products", (req, res) => {
@@ -191,7 +192,8 @@ app.get("/api/sellers/:id/products", (req, res) => {
   res.json(rows);
 });
 
-app.get("/api/sellers/:id/stats", (req, res) => {
+app.get("/api/sellers/:id/stats", checkToken, (req, res) => {
+  if (req.params.id !== req.userId) return res.status(403).json({ error: "Not allowed" });
   const sellerId = req.params.id;
   const products = db.data.products.filter((p) => p.seller_id === sellerId);
   const chats = db.data.chats.filter((c) => c.seller_id === sellerId).length;
@@ -207,8 +209,8 @@ app.get("/api/sellers/:id/stats", (req, res) => {
   });
 });
 
-app.get("/api/chats", (req, res) => {
-  const { user_id } = req.query;
+app.get("/api/chats", checkToken, (req, res) => {
+  const user_id = req.userId;
   const rows = db.data.chats
     .filter((c) => c.buyer_id === user_id || c.seller_id === user_id)
     .map((c) => {
@@ -227,8 +229,10 @@ app.get("/api/chats", (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/chats", async (req, res) => {
-  const { buyer_id, seller_id, product_id } = req.body;
+app.post("/api/chats", checkToken, async (req, res) => {
+  const buyer_id = req.userId;
+  const { seller_id, product_id } = req.body;
+  if (!seller_id) return res.status(400).json({ error: "seller_id required" });
   let chat = db.data.chats.find(
     (c) =>
       c.buyer_id === buyer_id &&
@@ -249,21 +253,27 @@ app.post("/api/chats", async (req, res) => {
   res.json(chat);
 });
 
-app.get("/api/chats/:id", (req, res) => {
+app.get("/api/chats/:id", checkToken, (req, res) => {
   const chat = db.data.chats.find((c) => c.id === req.params.id);
   if (!chat) return res.status(404).json({ error: "Not found" });
+  if (chat.buyer_id !== req.userId && chat.seller_id !== req.userId) return res.status(403).json({ error: "Not allowed" });
   res.json(chat);
 });
 
-app.get("/api/chats/:id/messages", (req, res) => {
+app.get("/api/chats/:id/messages", checkToken, (req, res) => {
+  const chat = db.data.chats.find((c) => c.id === req.params.id);
+  if (!chat || (chat.buyer_id !== req.userId && chat.seller_id !== req.userId)) return res.status(403).json({ error: "Not allowed" });
   const rows = db.data.messages
     .filter((m) => m.chat_id === req.params.id)
     .sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at));
   res.json(rows);
 });
 
-app.post("/api/chats/:id/messages", async (req, res) => {
-  const { sender_id, content, message_type, offer_price } = req.body;
+app.post("/api/chats/:id/messages", checkToken, async (req, res) => {
+  const chat = db.data.chats.find((c) => c.id === req.params.id);
+  if (!chat || (chat.buyer_id !== req.userId && chat.seller_id !== req.userId)) return res.status(403).json({ error: "Not allowed" });
+  const sender_id = req.userId;
+  const { content, message_type, offer_price } = req.body;
   const msg = {
     id: nanoid(),
     chat_id: req.params.id,
@@ -280,16 +290,18 @@ app.post("/api/chats/:id/messages", async (req, res) => {
   res.json(msg);
 });
 
-app.put("/api/messages/:id/offer-status", async (req, res) => {
+app.put("/api/messages/:id/offer-status", checkToken, async (req, res) => {
   const msg = db.data.messages.find((m) => m.id === req.params.id);
   if (!msg) return res.status(404).json({ error: "Not found" });
+  const mchat = db.data.chats.find((c) => c.id === msg.chat_id);
+  if (!mchat || (mchat.buyer_id !== req.userId && mchat.seller_id !== req.userId)) return res.status(403).json({ error: "Not allowed" });
   msg.offer_status = req.body.offer_status;
   await db.write();
   res.json(msg);
 });
 
-app.get("/api/wishlist", (req, res) => {
-  const { user_id } = req.query;
+app.get("/api/wishlist", checkToken, (req, res) => {
+  const user_id = req.userId;
   const rows = db.data.wishlist
     .filter((w) => w.user_id === user_id)
     .map((w) => {
@@ -300,8 +312,9 @@ app.get("/api/wishlist", (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/wishlist", async (req, res) => {
-  const { user_id, product_id } = req.body;
+app.post("/api/wishlist", checkToken, async (req, res) => {
+  const user_id = req.userId;
+  const { product_id } = req.body;
   const exists = db.data.wishlist.find(
     (w) => w.user_id === user_id && w.product_id === product_id
   );
@@ -312,8 +325,9 @@ app.post("/api/wishlist", async (req, res) => {
   res.json({ success: true });
 });
 
-app.delete("/api/wishlist", async (req, res) => {
-  const { user_id, product_id } = req.body;
+app.delete("/api/wishlist", checkToken, async (req, res) => {
+  const user_id = req.userId;
+  const { product_id } = req.body;
   db.data.wishlist = db.data.wishlist.filter(
     (w) => !(w.user_id === user_id && w.product_id === product_id)
   );
