@@ -1,3 +1,4 @@
+import { checkToken } from "./middleware/auth.js";
 import express from "express";
 import { nanoid } from "nanoid";
 import db from "../db.js";
@@ -37,8 +38,9 @@ function average(numbers) {
 }
 
 // Submit (or update) a review for a product
-router.post("/reviews", async (req, res) => {
-  const { product_id, buyer_id, rating, comment } = req.body;
+router.post("/reviews", checkToken, async (req, res) => {
+  const { product_id, rating, comment } = req.body;
+  const buyer_id = req.userId;
 
   if (!product_id || !buyer_id || !rating) {
     return res.status(400).json({ error: "product_id, buyer_id and rating are required" });

@@ -11,6 +11,7 @@ const defaultData = {
   reviews: [],
   orders: [],
   otps: [],
+  reports: [],
 };
 
 if (!process.env.MONGODB_URI) {

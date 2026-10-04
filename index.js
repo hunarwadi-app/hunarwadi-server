@@ -335,6 +335,28 @@ app.delete("/api/wishlist", checkToken, async (req, res) => {
   res.json({ success: true });
 });
 
+app.post("/api/reports", checkToken, async (req, res) => {
+  const { product_id, reason } = req.body;
+  const product = db.data.products.find((p) => p.id === product_id);
+  if (!product) return res.status(404).json({ error: "Not found" });
+  if (product.seller_id === req.userId) return res.status(400).json({ error: "You cannot report your own product" });
+  if (!db.data.reports) db.data.reports = [];
+  const already = db.data.reports.find((r) => r.product_id === product_id && r.reporter_id === req.userId);
+  if (!already) {
+    db.data.reports.push({
+      id: nanoid(),
+      product_id,
+      reporter_id: req.userId,
+      reason: String(reason || "other").slice(0, 100),
+      created_at: new Date().toISOString(),
+    });
+    const count = db.data.reports.filter((r) => r.product_id === product_id).length;
+    if (count >= 3 && product.status === "active") product.status = "under_review";
+    await db.write();
+  }
+  res.json({ success: true });
+});
+
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 app.listen(PORT, () => {
