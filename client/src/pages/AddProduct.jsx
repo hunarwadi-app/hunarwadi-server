@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
@@ -13,6 +13,8 @@ export default function AddProduct() {
   const [price, setPrice] = useState("");
   const [negotiable, setNegotiable] = useState(false);
   const [photo, setPhoto] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const busy = useRef(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -20,11 +22,27 @@ export default function AddProduct() {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => setPhoto(reader.result);
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 800;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        setPhoto(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = reader.result;
+    };
     reader.readAsDataURL(file);
   };
 
   const publish = async () => {
+    if (busy.current) return;
+    busy.current = true;
+    setSubmitting(true);
+    try {
     await api.createProduct({
       seller_id: user.id,
       title,
@@ -35,6 +53,11 @@ export default function AddProduct() {
       photo,
     });
     navigate("/my-products");
+    } catch (err) {
+      busy.current = false;
+      setSubmitting(false);
+      alert("Product save nahi hua, dobara try karein");
+    }
   };
 
   return (
