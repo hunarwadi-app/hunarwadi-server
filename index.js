@@ -5,6 +5,7 @@ import db from "./db.js";
 import authRouter from "./routes/auth.js";
 import reviewsRouter from "./routes/reviews.js";
 import ordersRouter from "./routes/orders.js";
+import { checkToken } from "./routes/middleware/auth.js";
 
 const app = express();
 app.use(cors());
@@ -136,8 +137,9 @@ app.get("/api/products/:id", (req, res) => {
   });
 });
 
-app.post("/api/products", async (req, res) => {
-  const { seller_id, title, description, price, is_negotiable, category, photo } = req.body;
+app.post("/api/products", checkToken, async (req, res) => {
+  const { title, description, price, is_negotiable, category, photo } = req.body;
+  const seller_id = req.userId;
   if (!seller_id || !title) {
     return res.status(400).json({ error: "seller_id and title are required" });
   }
@@ -158,9 +160,10 @@ app.post("/api/products", async (req, res) => {
   res.json(product);
 });
 
-app.put("/api/products/:id", async (req, res) => {
+app.put("/api/products/:id", checkToken, async (req, res) => {
   const p = db.data.products.find((x) => x.id === req.params.id);
   if (!p) return res.status(404).json({ error: "Not found" });
+  if (p.seller_id !== req.userId) return res.status(403).json({ error: "Not your product" });
   const { title, description, price, status, category, photo } = req.body;
   if (title !== undefined) p.title = title;
   if (description !== undefined) p.description = description;
@@ -172,7 +175,10 @@ app.put("/api/products/:id", async (req, res) => {
   res.json(p);
 });
 
-app.delete("/api/products/:id", async (req, res) => {
+app.delete("/api/products/:id", checkToken, async (req, res) => {
+  const found = db.data.products.find((x) => x.id === req.params.id);
+  if (!found) return res.status(404).json({ error: "Not found" });
+  if (found.seller_id !== req.userId) return res.status(403).json({ error: "Not your product" });
   db.data.products = db.data.products.filter((x) => x.id !== req.params.id);
   await db.write();
   res.json({ success: true });
