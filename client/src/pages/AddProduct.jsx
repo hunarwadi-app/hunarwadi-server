@@ -33,6 +33,7 @@ export default function AddProduct() {
         canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
         setPhoto(canvas.toDataURL("image/jpeg", 0.7));
       };
+      img.onerror = () => alert("Photo load nahi hui, dusri photo try karein");
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
@@ -114,7 +115,7 @@ export default function AddProduct() {
             <input type="checkbox" checked={negotiable} onChange={(e) => setNegotiable(e.target.checked)} />
             Price is negotiable
           </label>
-          <button className="btn btn-primary" onClick={publish} disabled={!price}>Publish</button>
+          <button className="btn btn-primary" onClick={publish} disabled={!price || submitting}>{submitting ? "Publishing..." : "Publish"}</button>
         </div>
       )}
     </div>
