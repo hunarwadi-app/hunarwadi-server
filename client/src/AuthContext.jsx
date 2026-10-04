@@ -13,10 +13,11 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem("hunarwadi_user");
   }, [user]);
 
+  const setUserKeepToken = (u) => setUser((prev) => (u ? { ...u, token: u.token || prev?.token } : u));
   const logout = () => setUser(null);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout }}>
+    <AuthContext.Provider value={{ user, setUser: setUserKeepToken, logout }}>
       {children}
     </AuthContext.Provider>
   );

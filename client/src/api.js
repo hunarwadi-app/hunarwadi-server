@@ -12,7 +12,13 @@ async function req(path, opts = {}) {
     ...opts,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  if (!res.ok) {
+    if (res.status === 401 && !path.startsWith("/auth")) {
+      localStorage.removeItem("hunarwadi_user");
+      window.location.href = "/login";
+    }
+    throw new Error(data.error || "Request failed");
+  }
   return data;
 }
 
