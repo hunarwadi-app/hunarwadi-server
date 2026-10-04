@@ -1,12 +1,14 @@
 [
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "in.hunarwadi.www.twa",
-      "sha256_cert_fingerprints": [
-        "C4:A4:73:48:33:83:A9:9E:AF:0E:BD:C4:B5:46:4F:C2:14:AB:98:0A:2B:54:C0:C1:60:87:28:7A:8B:3F:73:7F"
-      ]
+    {
+        "target":  {
+                       "sha256_cert_fingerprints":  [
+                                                        "C4:A4:73:48:33:83:A9:9E:AF:0E:BD:C4:B5:46:4F:C2:14:AB:98:0A:2B:54:C0:C1:60:87:28:7A:8B:3F:73:7F"
+                                                    ],
+                       "namespace":  "android_app",
+                       "package_name":  "in.hunarwadi.www.twa"
+                   },
+        "relation":  [
+                         "delegate_permission/common.handle_all_urls"
+                     ]
     }
-  }
 ]
