@@ -10,19 +10,21 @@ export default function ArtistProfile() {
   const [products, setProducts] = useState([]);
   const [rating, setRating] = useState({ average: null, count: 0 });
   const navigate = useNavigate();
+  const [loadErr, setLoadErr] = useState("");
 
   useEffect(() => {
-    (async () => {
+    (async () => { try {
       const u = await api.getUser(id);
       setSeller(u);
       const p = await api.getSellerProducts(id);
       setProducts(p.filter((x) => x.status === "active"));
       const r = await api.getSellerRating(id);
       setRating(r);
+    } catch (e) { setLoadErr(e.message || "Load failed"); }
     })();
   }, [id]);
 
-  if (!seller) return <div className="screen">Loading...</div>;
+  if (!seller) return <div className="screen">{loadErr ? "Error: " + loadErr : "Loading..."}</div>;
 
   return (
     <div className="screen">

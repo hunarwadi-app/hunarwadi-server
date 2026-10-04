@@ -48,6 +48,7 @@ export const api = {
   removeWishlist: (user_id, product_id) => req("/wishlist", { method: "DELETE", body: JSON.stringify({ user_id, product_id }) }),
   getProductReviews: (productId) => req(`/products/${productId}/reviews`),
   submitReview: (data) => req("/reviews", { method: "POST", body: JSON.stringify(data) }),
+  reportProduct: (product_id, reason) => req("/reports", { method: "POST", body: JSON.stringify({ product_id, reason }) }),
   getSellerRating: (sellerId) => req(`/sellers/${sellerId}/rating`),
   createOrder: (data) => req("/orders", { method: "POST", body: JSON.stringify(data) }),
   getOrders: (userId) => req(`/orders?user_id=${userId}`),

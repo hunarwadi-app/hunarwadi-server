@@ -14,6 +14,7 @@ export default function ProductDetail() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [myRating, setMyRating] = useState(5);
   const [myComment, setMyComment] = useState("");
+  const [showReport, setShowReport] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -70,6 +71,17 @@ export default function ProductDetail() {
     });
     setShowOffer(false);
     navigate(`/chat/${chat.id}`);
+  };
+
+  const reportIt = async (reason) => {
+    try {
+      await api.reportProduct(id, reason);
+      setShowReport(false);
+      alert("Thank you. We will review this product.");
+    } catch (e) {
+      setShowReport(false);
+      alert("Could not report: " + e.message);
+    }
   };
 
   const submitReview = async () => {
@@ -167,6 +179,24 @@ export default function ProductDetail() {
             {r.comment && <p style={{ fontSize: 13.5, color: "var(--ink-soft)", margin: 0 }}>{r.comment}</p>}
           </div>
         ))
+      )}
+
+      {!isOwnProduct && (
+        <div style={{ textAlign: "center", margin: "24px 0 32px", fontSize: 13, color: "var(--ink-soft)", cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowReport(true)}>
+          Report this product
+        </div>
+      )}
+
+      {showReport && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "flex-end", maxWidth: 480, margin: "0 auto" }}>
+          <div className="card" style={{ width: "100%", padding: 24, borderRadius: "20px 20px 0 0" }}>
+            <h3 style={{ marginBottom: 14 }}>Report this product</h3>
+            {["Not handmade / wrong item", "Fake or misleading", "Inappropriate content", "Spam or scam"].map((r) => (
+              <button key={r} className="btn btn-outline" style={{ marginBottom: 8 }} onClick={() => reportIt(r)}>{r}</button>
+            ))}
+            <button className="btn btn-ghost" onClick={() => setShowReport(false)}>Cancel</button>
+          </div>
+        </div>
       )}
 
       {showOffer && (
