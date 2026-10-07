@@ -5,35 +5,6 @@ import { checkToken } from "./middleware/auth.js";
 
 const router = express.Router();
 
-// ============================================================
-// ORDERS
-// ============================================================
-// This turns a chat/negotiation into a real, trackable order once
-// both sides agree on a deal. It does NOT handle payment — as per
-// the original business plan (Chapter 4), the MVP launches without
-// an online payment gateway. Buyer and seller settle payment between
-// themselves (cash/UPI), and this just tracks the STATUS of the deal
-// so both people know what stage it's at.
-//
-// STATUS FLOW:
-//   confirmed → preparing → ready → delivered
-//   (or → cancelled, from confirmed/preparing/ready)
-//
-// - "confirmed"  : order just created, seller has agreed to make/sell it
-// - "preparing"  : seller is making/packing the item
-// - "ready"      : ready for pickup / handover
-// - "delivered"  : buyer has received it (this is also what should
-//                   eventually unlock the ability to leave a review,
-//                   once that stricter rule from reviews.js is added)
-// - "cancelled"  : either side cancelled before delivery
-//
-// Only the SELLER can move an order forward (confirmed → preparing →
-// ready → delivered), since they're the one doing the physical work.
-// Only the BUYER can mark it "cancelled" while it's still "confirmed"
-// (once the seller starts "preparing", cancelling should go through
-// a chat conversation instead, not a one-tap button — kept simple for now).
-// ============================================================
-
 function findUser(id) {
   return db.data.users.find((u) => u.id === id);
 }
@@ -47,20 +18,38 @@ const NEXT_STATUS = {
   ready: "delivered",
 };
 
-// Create a new order (buyer or seller confirms a deal from chat)
+// Create a new order (buyer confirms a deal)
 router.post("/orders", checkToken, async (req, res) => {
-  const { seller_id, product_id, chat_id, price } = req.body;
+  const { product_id, chat_id } = req.body;
   const buyer_id = req.userId;
 
-  if (!seller_id || !product_id) {
-    return res.status(400).json({ error: "seller_id and product_id are required" });
-  }
-  if (buyer_id === seller_id) {
-    return res.status(400).json({ error: "Buyer and seller can't be the same person" });
+  if (!product_id) {
+    return res.status(400).json({ error: "product_id is required" });
   }
 
   const product = findProduct(product_id);
   if (!product) return res.status(404).json({ error: "Product not found" });
+
+  const seller_id = product.seller_id;
+
+  if (buyer_id === seller_id) {
+    return res.status(400).json({ error: "Buyer and seller can't be the same person" });
+  }
+
+  let finalPrice = product.price;
+
+  if (chat_id) {
+    const chat = db.data.chats?.find((c) => c.id === chat_id);
+    if (chat) {
+      const messages = db.data.chat_messages?.filter((m) => m.chat_id === chat_id) || [];
+      const acceptedOffer = [...messages].reverse().find(
+        (m) => m.message_type === "offer" && m.offer_status === "accepted"
+      );
+      if (acceptedOffer && acceptedOffer.offer_price) {
+        finalPrice = Number(acceptedOffer.offer_price);
+      }
+    }
+  }
 
   const order = {
     id: nanoid(),
@@ -68,21 +57,23 @@ router.post("/orders", checkToken, async (req, res) => {
     seller_id,
     product_id,
     chat_id: chat_id || null,
-    price: price != null ? Number(price) : product.price,
+    price: finalPrice,
     status: "confirmed",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+
+  if (!db.data.orders) db.data.orders = [];
   db.data.orders.push(order);
   await db.write();
   res.json(order);
 });
 
-// Get all orders for the logged-in user — as buyer AND as seller (role tells the frontend which)
+// Get all orders for the logged-in user
 router.get("/orders", checkToken, (req, res) => {
   const user_id = req.userId;
 
-  const rows = db.data.orders
+  const rows = (db.data.orders || [])
     .filter((o) => o.buyer_id === user_id || o.seller_id === user_id)
     .map((o) => {
       const product = findProduct(o.product_id) || {};
@@ -102,9 +93,9 @@ router.get("/orders", checkToken, (req, res) => {
   res.json(rows);
 });
 
-// Get a single order (used inside the Chat screen to show live status)
+// Get a single order
 router.get("/orders/:id", checkToken, (req, res) => {
-  const o = db.data.orders.find((x) => x.id === req.params.id);
+  const o = (db.data.orders || []).find((x) => x.id === req.params.id);
   if (!o) return res.status(404).json({ error: "Not found" });
   if (o.buyer_id !== req.userId && o.seller_id !== req.userId) {
     return res.status(403).json({ error: "Not your order" });
@@ -113,9 +104,9 @@ router.get("/orders/:id", checkToken, (req, res) => {
   res.json({ ...o, product_title: product.title, product_photo: product.photo });
 });
 
-// Get the order tied to a specific chat, if one exists (also used by Chat screen)
+// Get the order tied to a specific chat
 router.get("/chats/:chatId/order", checkToken, (req, res) => {
-  const o = db.data.orders.find((x) => x.chat_id === req.params.chatId);
+  const o = (db.data.orders || []).find((x) => x.chat_id === req.params.chatId);
   if (!o) return res.json(null);
   if (o.buyer_id !== req.userId && o.seller_id !== req.userId) {
     return res.status(403).json({ error: "Not your order" });
@@ -124,11 +115,11 @@ router.get("/chats/:chatId/order", checkToken, (req, res) => {
   res.json({ ...o, product_title: product.title, product_photo: product.photo });
 });
 
-// Move an order forward to its next status, OR cancel it
+// Update order status or cancel
 router.put("/orders/:id/status", checkToken, async (req, res) => {
   const { status } = req.body;
   const actor_id = req.userId;
-  const order = db.data.orders.find((x) => x.id === req.params.id);
+  const order = (db.data.orders || []).find((x) => x.id === req.params.id);
   if (!order) return res.status(404).json({ error: "Not found" });
 
   if (status === "cancelled") {
