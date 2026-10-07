@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import db from "./db.js";
 import authRouter from "./routes/auth.js";
 import reviewsRouter from "./routes/reviews.js";
+import uploadRouter from "./routes/upload.js";
 import ordersRouter from "./routes/orders.js";
 import { checkToken } from "./routes/middleware/auth.js";
 
@@ -15,6 +16,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use("/api/auth", authRouter);
 // Reviews & Ratings live in routes/reviews.js — mounted under /api
 app.use("/api", reviewsRouter);
+app.use("/api", uploadRouter);
 // Orders live in routes/orders.js — mounted under /api
 app.use("/api", ordersRouter);
 
@@ -295,7 +297,12 @@ app.put("/api/messages/:id/offer-status", checkToken, async (req, res) => {
   if (!msg) return res.status(404).json({ error: "Not found" });
   const mchat = db.data.chats.find((c) => c.id === msg.chat_id);
   if (!mchat || (mchat.buyer_id !== req.userId && mchat.seller_id !== req.userId)) return res.status(403).json({ error: "Not allowed" });
-  msg.offer_status = req.body.offer_status;
+  const newStatus = req.body.offer_status;
+  if (msg.message_type !== "offer") return res.status(400).json({ error: "Not an offer" });
+  if (msg.sender_id === req.userId) return res.status(403).json({ error: "Cannot respond to your own offer" });
+  if (msg.offer_status !== "pending") return res.status(400).json({ error: "Offer already decided" });
+  if (!["accepted", "rejected"].includes(newStatus)) return res.status(400).json({ error: "Invalid status" });
+  msg.offer_status = newStatus;
   await db.write();
   res.json(msg);
 });
