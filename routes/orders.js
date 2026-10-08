@@ -40,8 +40,8 @@ router.post("/orders", checkToken, async (req, res) => {
 
   if (chat_id) {
     const chat = db.data.chats?.find((c) => c.id === chat_id);
-    if (chat) {
-      const messages = db.data.chat_messages?.filter((m) => m.chat_id === chat_id) || [];
+    if (chat && chat.buyer_id === buyer_id && chat.product_id === product_id) {
+      const messages = (db.data.messages || []).filter((m) => m.chat_id === chat_id);
       const acceptedOffer = [...messages].reverse().find(
         (m) => m.message_type === "offer" && m.offer_status === "accepted"
       );
