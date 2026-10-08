@@ -46,7 +46,7 @@ router.post("/reviews", checkToken, async (req, res) => {
     return res.status(400).json({ error: "product_id, buyer_id and rating are required" });
   }
   const ratingNum = Number(rating);
-  if (ratingNum < 1 || ratingNum > 5) {
+  if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
     return res.status(400).json({ error: "rating must be between 1 and 5" });
   }
 
@@ -62,7 +62,7 @@ router.post("/reviews", checkToken, async (req, res) => {
 
   if (existing) {
     existing.rating = ratingNum;
-    existing.comment = comment ?? existing.comment;
+    existing.comment = typeof comment === "string" ? comment.slice(0, 500) : existing.comment;
     existing.created_at = new Date().toISOString();
   } else {
     db.data.reviews.push({
@@ -70,7 +70,7 @@ router.post("/reviews", checkToken, async (req, res) => {
       product_id,
       buyer_id,
       rating: ratingNum,
-      comment: comment || "",
+      comment: typeof comment === "string" ? comment.slice(0, 500) : "",
       created_at: new Date().toISOString(),
     });
   }
