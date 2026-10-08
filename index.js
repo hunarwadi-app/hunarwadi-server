@@ -301,6 +301,13 @@ app.post("/api/chats/:id/messages", checkToken, async (req, res) => {
   if (!chat || (chat.buyer_id !== req.userId && chat.seller_id !== req.userId)) return res.status(403).json({ error: "Not allowed" });
   const sender_id = req.userId;
   const { content, message_type, offer_price } = req.body;
+  if (message_type !== undefined && !["text", "offer"].includes(message_type)) return res.status(400).json({ error: "Invalid message type" });
+  if (message_type === "offer") {
+    const op = Number(offer_price);
+    const prod = (db.data.products || []).find((x) => x.id === chat.product_id);
+    if (!Number.isFinite(op) || op <= 0) return res.status(400).json({ error: "Invalid offer price" });
+    if (!prod || !prod.is_negotiable) return res.status(400).json({ error: "This product is not negotiable" });
+  }
   const msg = {
     id: nanoid(),
     chat_id: req.params.id,
