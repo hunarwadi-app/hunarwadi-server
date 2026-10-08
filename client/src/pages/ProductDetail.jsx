@@ -15,6 +15,7 @@ export default function ProductDetail() {
   const [myRating, setMyRating] = useState(5);
   const [myComment, setMyComment] = useState("");
   const [showReport, setShowReport] = useState(false);
+  const [photoIdx, setPhotoIdx] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -104,12 +105,19 @@ export default function ProductDetail() {
 
       <div className="card" style={{ aspectRatio: "1/1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60, marginBottom: 16, overflow: "hidden" }}>
         {product.photo ? (
-          <img src={product.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={(product.photos && product.photos[photoIdx]) || product.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           "🖼️"
         )}
       </div>
 
+      {product.photos && product.photos.length > 1 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 12, overflowX: "auto" }}>
+          {product.photos.map((ph, i) => (
+            <img key={i} src={ph} alt="" onClick={() => setPhotoIdx(i)} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: i === photoIdx ? "2px solid #c9962b" : "2px solid transparent" }} />
+          ))}
+        </div>
+      )}
       <h1 className="display" style={{ fontSize: 22, marginBottom: 4 }}>{product.title}</h1>
 
       <div style={{ marginBottom: 8 }}>

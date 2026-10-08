@@ -12,7 +12,7 @@ export default function AddProduct() {
   const [category, setCategory] = useState("Jewellery");
   const [price, setPrice] = useState("");
   const [negotiable, setNegotiable] = useState(false);
-  const [photo, setPhoto] = useState("");
+  const [photos, setPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const busy = useRef(false);
   const { user } = useAuth();
@@ -31,7 +31,7 @@ export default function AddProduct() {
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
         canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        setPhoto(canvas.toDataURL("image/jpeg", 0.7));
+        setPhotos((prev) => (prev.length >= 5 ? prev : [...prev, canvas.toDataURL("image/jpeg", 0.7)]));
       };
       img.onerror = () => alert("Photo load nahi hui, dusri photo try karein");
       img.src = reader.result;
@@ -39,8 +39,8 @@ export default function AddProduct() {
     reader.readAsDataURL(file);
   };
 
-  const uploadPhoto = async (dataUrl) => {
-    const s = await api.getUploadSignature();
+  const uploadPhoto = async (dataUrl, sig) => {
+    const s = sig || await api.getUploadSignature();
     const fd = new FormData();
     fd.append("file", dataUrl);
     Object.entries(s).forEach(([k, v]) => { if (k !== "cloud_name") fd.append(k, v); });
@@ -55,7 +55,9 @@ export default function AddProduct() {
     busy.current = true;
     setSubmitting(true);
     try {
-    const photoUrl = photo ? await uploadPhoto(photo) : null;
+    const sig = photos.length ? await api.getUploadSignature() : null;
+    const photoUrls = [];
+    for (const ph of photos) { photoUrls.push(await uploadPhoto(ph, sig)); }
     await api.createProduct({
       seller_id: user.id,
       title,
@@ -63,7 +65,8 @@ export default function AddProduct() {
       price: parseFloat(price),
       is_negotiable: negotiable,
       category,
-      photo: photoUrl,
+      photo: photoUrls[0] || null,
+      photos: photoUrls,
     });
     navigate("/my-products");
     } catch (err) {
@@ -82,9 +85,17 @@ export default function AddProduct() {
 
       {step === 1 && (
         <div>
-          <label className="field-label">Product Photo</label>
+          <label className="field-label">Product Photos ({photos.length}/5)</label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {photos.map((ph, i) => (
+              <div key={i} style={{ position: "relative", width: 72, height: 72 }}>
+                <img src={ph} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8 }} />
+                <span onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))} style={{ position: "absolute", top: -6, right: -6, background: "#333", color: "#fff", borderRadius: "50%", width: 20, height: 20, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>x</span>
+              </div>
+            ))}
+          </div>
           <label className="card" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, marginBottom: 20, cursor: "pointer", overflow: "hidden" }}>
-            {photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "var(--ink-soft)" }}>📷 Tap to upload photo</span>}
+            <span style={{ color: "var(--ink-soft)" }}>{photos.length < 5 ? "+ Add photo" : "Max 5 photos"}</span>
             <input type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
           </label>
           <button className="btn btn-primary" onClick={() => setStep(2)}>Next</button>
