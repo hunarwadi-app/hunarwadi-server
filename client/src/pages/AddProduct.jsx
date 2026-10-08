@@ -39,11 +39,23 @@ export default function AddProduct() {
     reader.readAsDataURL(file);
   };
 
+  const uploadPhoto = async (dataUrl) => {
+    const s = await api.getUploadSignature();
+    const fd = new FormData();
+    fd.append("file", dataUrl);
+    Object.entries(s).forEach(([k, v]) => { if (k !== "cloud_name") fd.append(k, v); });
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${s.cloud_name}/image/upload`, { method: "POST", body: fd });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.secure_url) throw new Error((d.error && d.error.message) || "Photo upload failed");
+    return d.secure_url;
+  };
+
   const publish = async () => {
     if (busy.current) return;
     busy.current = true;
     setSubmitting(true);
     try {
+    const photoUrl = photo ? await uploadPhoto(photo) : null;
     await api.createProduct({
       seller_id: user.id,
       title,
@@ -51,7 +63,7 @@ export default function AddProduct() {
       price: parseFloat(price),
       is_negotiable: negotiable,
       category,
-      photo,
+      photo: photoUrl,
     });
     navigate("/my-products");
     } catch (err) {

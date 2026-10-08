@@ -23,6 +23,7 @@ async function req(path, opts = {}) {
 }
 
 export const api = {
+  getUploadSignature: () => req("/upload/signature"),
   sendOtp: (email) => req("/auth/send-otp", { method: "POST", body: JSON.stringify({ email }) }),
   verifyOtp: (email, otp) => req("/auth/verify-otp", { method: "POST", body: JSON.stringify({ email, otp }) }),
   getUser: (id) => req(`/users/${id}`),
