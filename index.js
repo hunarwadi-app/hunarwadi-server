@@ -139,13 +139,17 @@ app.get("/api/products/:id", (req, res) => {
 });
 
 app.post("/api/products", checkToken, async (req, res) => {
-  const { title, description, price, is_negotiable, category, photo } = req.body;
+  const { title, description, price, is_negotiable, category, photo, photos } = req.body;
   const seller_id = req.userId;
   if (!seller_id || !title) {
     return res.status(400).json({ error: "seller_id and title are required" });
   }
 
-  if (photo && !photo.startsWith(CLOUDINARY_PREFIX)) {
+  const okUrl = (u) => typeof u === "string" && u.startsWith(CLOUDINARY_PREFIX);
+  if (photos !== undefined && (!Array.isArray(photos) || photos.length > 5 || !photos.every(okUrl))) {
+    return res.status(400).json({ error: "Invalid photos list (max 5 Cloudinary URLs)." });
+  }
+  if (photo && !okUrl(photo)) {
     return res.status(400).json({ error: "Invalid photo URL. Must be hosted on Cloudinary." });
   }
 
@@ -157,7 +161,8 @@ app.post("/api/products", checkToken, async (req, res) => {
     price: price || 0,
     is_negotiable: is_negotiable ? 1 : 0,
     category: category || "",
-    photo: photo || null,
+    photo: (Array.isArray(photos) && photos.length ? photos[0] : photo) || null,
+    photos: Array.isArray(photos) ? photos : (photo ? [photo] : []),
     status: "active",
     created_at: new Date().toISOString(),
   };
@@ -171,15 +176,22 @@ app.put("/api/products/:id", checkToken, async (req, res) => {
   const p = (db.data.products || []).find((x) => x.id === req.params.id);
   if (!p) return res.status(404).json({ error: "Not found" });
   if (p.seller_id !== req.userId) return res.status(403).json({ error: "Not your product" });
-  const { title, description, price, status, category, photo } = req.body;
+  const { title, description, price, status, category, photo, photos } = req.body;
 
   if (photo !== undefined && photo !== null && photo !== "") {
-    if (!photo.startsWith(CLOUDINARY_PREFIX)) {
+    if (typeof photo !== "string" || !photo.startsWith(CLOUDINARY_PREFIX)) {
       return res.status(400).json({ error: "Invalid photo URL. Must be hosted on Cloudinary." });
     }
     p.photo = photo;
   }
 
+  if (photos !== undefined) {
+    if (!Array.isArray(photos) || photos.length > 5 || !photos.every((u) => typeof u === "string" && u.startsWith(CLOUDINARY_PREFIX))) {
+      return res.status(400).json({ error: "Invalid photos list (max 5 Cloudinary URLs)." });
+    }
+    p.photos = photos;
+    if (photos[0]) p.photo = photos[0];
+  }
   if (title !== undefined) p.title = title;
   if (description !== undefined) p.description = description;
   if (price !== undefined) p.price = price;
