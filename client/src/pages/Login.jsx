@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -15,6 +16,10 @@ export default function Login() {
     setError("");
     if (!isValidEmail(email)) {
       setError("Please enter a valid email address.");
+      return;
+    }
+    if (!agreed) {
+      setError("Please confirm that you are 18 or older and accept the Terms and Privacy Policy.");
       return;
     }
     setLoading(true);
@@ -52,6 +57,10 @@ export default function Login() {
           </p>
         </div>
 
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, marginTop: 16, marginBottom: 8 }}>
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ marginTop: 3 }} />
+          <span>I am 18 or older and I agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.</span>
+        </label>
         {error && <p style={{ color: "var(--clay-dark)", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
         <button className="btn btn-primary" disabled={loading} style={{ marginTop: 24 }}>
@@ -60,7 +69,7 @@ export default function Login() {
       </form>
 
       <p style={{ fontSize: 11.5, color: "var(--ink-soft)", textAlign: "center", marginTop: 20 }}>
-        By continuing you agree to our Terms & Privacy Policy.
+        Need help? Write to hunarwadi99@gmail.com
       </p>
     </div>
   );

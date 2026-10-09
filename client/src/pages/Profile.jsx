@@ -1,10 +1,22 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { api } from "../api";
 import BottomNav from "../components/BottomNav";
 
 export default function Profile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete your account permanently? Your products, chats and reviews will be removed. This cannot be undone.")) return;
+    try {
+      await api.deleteAccount();
+      logout();
+      navigate("/");
+    } catch (e) {
+      alert("Could not delete account: " + e.message);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -45,12 +57,10 @@ export default function Profile() {
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          {["Edit Profile", "Language", "Notifications", "Privacy Settings"].map((label, i) => (
-            <div key={label} style={{ padding: "14px 16px", borderBottom: i < 3 ? "1px solid var(--border)" : "none", display: "flex", justifyContent: "space-between" }}>
-              <span>{label}</span>
-              <span style={{ color: "var(--ink-soft)" }}>→</span>
-            </div>
-          ))}
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }} onClick={() => navigate("/blocked")}>Blocked users</div>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }} onClick={() => navigate("/terms")}>Terms of Service</div>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }} onClick={() => navigate("/privacy")}>Privacy Policy</div>
+          <div style={{ padding: "14px 16px", color: "var(--clay-dark)", fontWeight: 600 }} onClick={handleDelete}>Delete Account</div>
         </div>
 
         <button className="btn btn-outline" onClick={handleLogout}>Logout</button>

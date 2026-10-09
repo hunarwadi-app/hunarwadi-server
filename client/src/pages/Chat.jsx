@@ -75,6 +75,18 @@ export default function Chat() {
     setOrder(newOrder);
   };
 
+  const blockOther = async () => {
+    const otherId = chat.buyer_id === user.id ? chat.seller_id : chat.buyer_id;
+    if (!window.confirm("Block this user? You will not be able to message each other.")) return;
+    try {
+      await api.blockUser(otherId);
+      alert("User blocked.");
+      navigate("/chats");
+    } catch (e) {
+      alert("Could not block: " + e.message);
+    }
+  };
+
   const advanceOrder = async () => {
     const next = NEXT_STATUS[order.status]?.next;
     if (!next) return;
@@ -97,6 +109,7 @@ export default function Chat() {
       <div className="top-bar">
         <span className="back" onClick={() => navigate(-1)}>←</span>
         <span style={{ fontWeight: 600 }}>Chat</span>
+        <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--clay-dark)", cursor: "pointer" }} onClick={blockOther}>Block</span>
       </div>
 
       {/* ---------- Order status card ---------- */}

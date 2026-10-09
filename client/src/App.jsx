@@ -19,6 +19,8 @@ import MyProducts from "./pages/MyProducts";
 import SellerDashboard from "./pages/SellerDashboard";
 import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
+import Blocked from "./pages/Blocked";
+import { Terms, Privacy, DeleteAccountInfo } from "./pages/Legal";
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -52,6 +54,10 @@ function AppRoutes() {
       <Route path="/seller-dashboard" element={<Protected><SellerDashboard /></Protected>} />
       <Route path="/profile" element={<Protected><Profile /></Protected>} />
       <Route path="/orders" element={<Protected><Orders /></Protected>} />
+      <Route path="/blocked" element={<Protected><Blocked /></Protected>} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/delete-account" element={<DeleteAccountInfo />} />
     </Routes>
   );
 }
