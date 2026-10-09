@@ -13,7 +13,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 app.use(cors());
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "1mb" }));
 
 const CLOUDINARY_PREFIX = "https://res.cloudinary.com/scipmep8/";
 
@@ -60,6 +60,11 @@ app.put("/api/users/:id", checkToken, async (req, res) => {
   const user = findUser(req.params.id);
   if (!user) return res.status(404).json({ error: "Not found" });
   const { name, city, latitude, longitude, role, profile_photo } = req.body;
+  const badStr = (v, max) => v !== undefined && (typeof v !== "string" || v.length > max);
+  if (badStr(name, 60) || badStr(city, 60) || badStr(role, 20)) return res.status(400).json({ error: "Invalid name, city or role" });
+  const badNum = (v, lim) => v !== undefined && v !== null && !(Number.isFinite(Number(v)) && Math.abs(Number(v)) <= lim);
+  if (badNum(latitude, 90) || badNum(longitude, 180)) return res.status(400).json({ error: "Invalid location" });
+  if (profile_photo !== undefined && profile_photo !== null && profile_photo !== "" && (typeof profile_photo !== "string" || !profile_photo.startsWith(CLOUDINARY_PREFIX))) return res.status(400).json({ error: "Invalid profile photo" });
   if (name !== undefined) user.name = name;
   if (city !== undefined) user.city = city;
   if (latitude !== undefined) user.latitude = latitude;
@@ -258,7 +263,13 @@ app.get("/api/chats", checkToken, (req, res) => {
 app.post("/api/chats", checkToken, async (req, res) => {
   const buyer_id = req.userId;
   const { seller_id, product_id } = req.body;
-  if (!seller_id) return res.status(400).json({ error: "seller_id required" });
+  if (!seller_id || typeof seller_id !== "string") return res.status(400).json({ error: "seller_id required" });
+  if (seller_id === buyer_id) return res.status(400).json({ error: "You cannot chat with yourself" });
+  if (!findUser(seller_id)) return res.status(404).json({ error: "Seller not found" });
+  if (product_id) {
+    const prodForChat = (db.data.products || []).find((x) => x.id === product_id);
+    if (!prodForChat || prodForChat.seller_id !== seller_id) return res.status(400).json({ error: "Invalid product for this seller" });
+  }
   if (!db.data.chats) db.data.chats = [];
   let chat = db.data.chats.find(
     (c) =>
@@ -308,13 +319,14 @@ app.post("/api/chats/:id/messages", checkToken, async (req, res) => {
     if (!Number.isFinite(op) || op <= 0) return res.status(400).json({ error: "Invalid offer price" });
     if (!prod || !prod.is_negotiable) return res.status(400).json({ error: "This product is not negotiable" });
   }
+  if ((message_type || "text") === "text" && !(typeof content === "string" && content.trim())) return res.status(400).json({ error: "Message is empty" });
   const msg = {
     id: nanoid(),
     chat_id: req.params.id,
     sender_id,
-    content: content || null,
+    content: typeof content === "string" && content.trim() ? content.trim().slice(0, 1000) : null,
     message_type: message_type || "text",
-    offer_price: offer_price || null,
+    offer_price: message_type === "offer" ? Number(offer_price) : null,
     offer_status: message_type === "offer" ? "pending" : null,
     sent_at: new Date().toISOString(),
     read_status: 0,
