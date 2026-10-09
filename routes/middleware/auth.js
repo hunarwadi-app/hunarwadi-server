@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import db from "../../db.js";
 
 export function checkToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -10,6 +11,7 @@ export function checkToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!(db.data.users || []).some((u) => u.id === decoded.userId)) return res.status(401).json({ error: "Account not found" });
     req.userId = decoded.userId;
     next();
   } catch (err) {
