@@ -7,9 +7,15 @@ import reviewsRouter from "./routes/reviews.js";
 import uploadRouter from "./routes/upload.js";
 import ordersRouter from "./routes/orders.js";
 import accountRouter from "./routes/account.js";
+import adminRouter from "./routes/admin.js";
 import { checkToken } from "./routes/middleware/auth.js";
 
 const app = express();
+
+for (const m of ["get", "post", "put", "delete"]) {
+  const orig = app[m].bind(app);
+  app[m] = (path, ...handlers) => orig(path, ...handlers.map((h) => (typeof h === "function" && h.length < 4 ? (req, res, next) => Promise.resolve(h(req, res, next)).catch(next) : h)));
+}
 
 app.set("trust proxy", 1);
 
@@ -28,11 +34,27 @@ app.use((req, res, next) => { const orig = res.json.bind(res); res.json = (b) =>
 
 const CLOUDINARY_PREFIX = "https://res.cloudinary.com/scipmep8/";
 
+const writeHits = new Map();
+const writeLimiter = (req, res, next) => {
+  const key = req.userId || req.ip;
+  const now = Date.now();
+  const arr = (writeHits.get(key) || []).filter((t) => now - t < 60000);
+  if (arr.length >= 30) return res.status(429).json({ error: "Too many requests. Please slow down." });
+  arr.push(now);
+  writeHits.set(key, arr);
+  next();
+};
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of writeHits) { if (!v.some((t) => now - t < 60000)) writeHits.delete(k); }
+}, 5 * 60 * 1000).unref();
+
 app.use("/api/auth", authRouter);
 app.use("/api", reviewsRouter);
 app.use("/api", uploadRouter);
 app.use("/api", ordersRouter);
 app.use("/api", accountRouter);
+app.use("/api", adminRouter);
 
 const PORT = process.env.PORT || 4000;
 
@@ -160,9 +182,13 @@ app.get("/api/products/:id", (req, res) => {
   });
 });
 
-app.post("/api/products", checkToken, async (req, res) => {
+app.post("/api/products", checkToken, writeLimiter, async (req, res) => {
   const { title, description, price, is_negotiable, category, photo, photos } = req.body;
   const seller_id = req.userId;
+  const strBad = (v, max) => typeof v !== "string" || v.length > max;
+  if (strBad(title, 100) || (description !== undefined && strBad(description, 1000)) || (category !== undefined && strBad(category, 40))) return res.status(400).json({ error: "Invalid title, description or category" });
+  if (price !== undefined && !(Number.isFinite(Number(price)) && Number(price) >= 0 && Number(price) <= 10000000)) return res.status(400).json({ error: "Invalid price" });
+  if ((db.data.products || []).filter((x) => x.seller_id === seller_id).length >= 50) return res.status(400).json({ error: "Product limit reached (50)" });
   if (!seller_id || !title) {
     return res.status(400).json({ error: "seller_id and title are required" });
   }
@@ -180,7 +206,7 @@ app.post("/api/products", checkToken, async (req, res) => {
     seller_id,
     title,
     description: description || "",
-    price: price || 0,
+    price: Number(price) || 0,
     is_negotiable: is_negotiable ? 1 : 0,
     category: category || "",
     photo: (Array.isArray(photos) && photos.length ? photos[0] : photo) || null,
@@ -199,6 +225,11 @@ app.put("/api/products/:id", checkToken, async (req, res) => {
   if (!p) return res.status(404).json({ error: "Not found" });
   if (p.seller_id !== req.userId) return res.status(403).json({ error: "Not your product" });
   const { title, description, price, status, category, photo, photos } = req.body;
+  const strBad = (v, max) => typeof v !== "string" || v.length > max;
+  if ((title !== undefined && (strBad(title, 100) || !title.trim())) || (description !== undefined && strBad(description, 1000)) || (category !== undefined && strBad(category, 40))) return res.status(400).json({ error: "Invalid title, description or category" });
+  if (price !== undefined && !(Number.isFinite(Number(price)) && Number(price) >= 0 && Number(price) <= 10000000)) return res.status(400).json({ error: "Invalid price" });
+  if (status !== undefined && ["under_review", "removed"].includes(status)) return res.status(400).json({ error: "Invalid status" });
+  if (["under_review", "removed"].includes(p.status)) return res.status(403).json({ error: "This product is under review" });
 
   if (photo !== undefined && photo !== null && photo !== "") {
     if (typeof photo !== "string" || !photo.startsWith(CLOUDINARY_PREFIX)) {
@@ -216,7 +247,7 @@ app.put("/api/products/:id", checkToken, async (req, res) => {
   }
   if (title !== undefined) p.title = title;
   if (description !== undefined) p.description = description;
-  if (price !== undefined) p.price = price;
+  if (price !== undefined) p.price = Number(price);
   if (status !== undefined) p.status = status;
   if (category !== undefined) p.category = category;
 
@@ -277,7 +308,7 @@ app.get("/api/chats", checkToken, (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/chats", checkToken, async (req, res) => {
+app.post("/api/chats", checkToken, writeLimiter, async (req, res) => {
   const buyer_id = req.userId;
   const { seller_id, product_id } = req.body;
   if (!seller_id || typeof seller_id !== "string") return res.status(400).json({ error: "seller_id required" });
@@ -327,7 +358,7 @@ app.get("/api/chats/:id/messages", checkToken, (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/chats/:id/messages", checkToken, async (req, res) => {
+app.post("/api/chats/:id/messages", checkToken, writeLimiter, async (req, res) => {
   const chat = (db.data.chats || []).find((c) => c.id === req.params.id);
   if (!chat || (chat.buyer_id !== req.userId && chat.seller_id !== req.userId)) return res.status(403).json({ error: "Not allowed" });
   const sender_id = req.userId;
@@ -412,7 +443,7 @@ app.delete("/api/wishlist", checkToken, async (req, res) => {
   res.json({ success: true });
 });
 
-app.post("/api/reports", checkToken, async (req, res) => {
+app.post("/api/reports", checkToken, writeLimiter, async (req, res) => {
   const { product_id, reason } = req.body;
   const product = (db.data.products || []).find((p) => p.id === product_id);
   if (!product) return res.status(404).json({ error: "Not found" });
@@ -435,6 +466,16 @@ app.post("/api/reports", checkToken, async (req, res) => {
 });
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+
+process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
+
+app.use((err, req, res, next) => {
+  console.error("Request error:", err && err.message ? err.message : err);
+  if (res.headersSent) return next(err);
+  const code = err && (err.status || err.statusCode);
+  if (code >= 400 && code < 500) return res.status(code).json({ error: "Bad request" });
+  res.status(500).json({ error: "Something went wrong" });
+});
 
 app.listen(PORT, () => {
   console.log(`HUNARWADI server running on http://localhost:${PORT}`);

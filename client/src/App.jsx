@@ -20,6 +20,7 @@ import SellerDashboard from "./pages/SellerDashboard";
 import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
 import Blocked from "./pages/Blocked";
+import Admin from "./pages/Admin";
 import { Terms, Privacy, DeleteAccountInfo } from "./pages/Legal";
 
 function Protected({ children }) {
@@ -55,6 +56,7 @@ function AppRoutes() {
       <Route path="/profile" element={<Protected><Profile /></Protected>} />
       <Route path="/orders" element={<Protected><Orders /></Protected>} />
       <Route path="/blocked" element={<Protected><Blocked /></Protected>} />
+      <Route path="/admin" element={<Protected><Admin /></Protected>} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/delete-account" element={<DeleteAccountInfo />} />

@@ -16,3 +16,5 @@ output.txt
 
 *.keystore
 *.jks
+
+backups/

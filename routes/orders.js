@@ -51,6 +51,9 @@ router.post("/orders", checkToken, async (req, res) => {
     }
   }
 
+  const orderChat = (db.data.chats || []).find((c) => c.id === chat_id);
+  if (!orderChat || orderChat.buyer_id !== buyer_id || orderChat.product_id !== product_id || orderChat.seller_id !== seller_id) return res.status(400).json({ error: "Orders can only be created from your own chat about this product" });
+  if ((db.data.orders || []).some((o) => o.chat_id === chat_id)) return res.status(400).json({ error: "An order already exists for this chat" });
   const order = {
     id: nanoid(),
     buyer_id,
