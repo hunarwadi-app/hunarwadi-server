@@ -8,6 +8,7 @@ import uploadRouter from "./routes/upload.js";
 import ordersRouter from "./routes/orders.js";
 import accountRouter from "./routes/account.js";
 import adminRouter from "./routes/admin.js";
+import jwt from "jsonwebtoken";
 import { checkToken } from "./routes/middleware/auth.js";
 
 const app = express();
@@ -70,6 +71,16 @@ function haversineKm(lat1, lon1, lat2, lon2) {
       Math.sin(dLon / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+const HIDDEN_STATUSES = ["under_review", "removed"];
+function optionalUserId(req) {
+  try {
+    const t = (req.headers.authorization || "").split(" ")[1];
+    return t ? jwt.verify(t, process.env.JWT_SECRET).userId : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 function findUser(id) {
@@ -165,6 +176,12 @@ app.get("/api/products", (req, res) => {
   }
 
   res.json(rows);
+});
+
+app.get("/api/products/:id", (req, res, next) => {
+  const hp = (db.data.products || []).find((x) => x.id === req.params.id);
+  if (hp && HIDDEN_STATUSES.includes(hp.status) && optionalUserId(req) !== hp.seller_id) return res.status(404).json({ error: "Not found" });
+  next();
 });
 
 app.get("/api/products/:id", (req, res) => {
@@ -266,7 +283,7 @@ app.delete("/api/products/:id", checkToken, async (req, res) => {
 
 app.get("/api/sellers/:id/products", (req, res) => {
   const rows = (db.data.products || [])
-    .filter((p) => p.seller_id === req.params.id)
+    .filter((p) => p.seller_id === req.params.id && (!HIDDEN_STATUSES.includes(p.status) || optionalUserId(req) === p.seller_id))
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   res.json(rows);
 });
@@ -413,7 +430,7 @@ app.get("/api/wishlist", checkToken, (req, res) => {
     .filter((w) => w.user_id === user_id)
     .map((w) => {
       const product = (db.data.products || []).find((p) => p.id === w.product_id);
-      return product ? { ...product, wishlist_id: w.id } : null;
+      return product && !HIDDEN_STATUSES.includes(product.status) ? { ...product, wishlist_id: w.id } : null;
     })
     .filter(Boolean);
   res.json(rows);
